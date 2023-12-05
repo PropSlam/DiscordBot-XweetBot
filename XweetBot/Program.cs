@@ -1,30 +1,25 @@
 ﻿using System.Text.RegularExpressions;
 using Discord;
-using Discord.Commands;
-using Discord.Interactions;
 using Discord.WebSocket;
 
 namespace XweetBot;
 
-public class Program {
+public partial class Program {
     public static Task Main( string[] args ) {
         return new Program().MainAsync();
     }
     
     DiscordSocketClient? _client;
 
-    string _urlRegexString =
-        @"https?://[^\s]*(twitter|x)[^\s]+/status/[^\s]+";
-    Regex _urlRegex;
-    string[] TARGET_URLS = new string[]{ "x.com", "twitter.com" };
+    const string URL_REGEX_STRING = @"https?://[^\s]*(twitter|x)[^\s]+/status/[^\s]+";
+
+    readonly Regex _urlRegex = MyRegex();
+    readonly string[] _targetUrls = new string[]{ "x.com", "twitter.com" };
 
     public async Task MainAsync() {
         var root = Directory.GetCurrentDirectory();
         var dotenv = Path.Combine(root, ".env");
-        Console.WriteLine($"[MainAsync]: Loading .env file from {dotenv}");
         DotEnv.Load(dotenv);
-        
-        _urlRegex = new Regex( _urlRegexString );
         
         DiscordSocketConfig config = new() {
             UseInteractionSnowflakeDate = false,
@@ -40,60 +35,44 @@ public class Program {
         
         var log = new LogMessage( LogSeverity.Debug, "MainAsync", "MainAsync Started." );
         await Log( log );
-        Console.WriteLine( "MainAsync..." );
-        
-        
         
         // Block this task until the program is closed.
         await Task.Delay( -1 );
     }
     
     async Task MessageReceived( SocketMessage message ) {
-        if ( message.Author.Id == _client.CurrentUser.Id ) return;
-        var userMessage = message as SocketUserMessage;
-        var messageCopy = message.Content;
-        Console.WriteLine($"[MessageReceived]");
-        var urls = ExtractURL( userMessage.Content );
-        if ( urls.Length == 0 ) return;
-        var newMessage = "";
-        for ( int i = 0; i < urls.Length; i++ ) {
-            var url = urls[i];
-            if ( string.IsNullOrEmpty( url ) ) continue;
-            if ( TryConvertURL( url, out var converted ) ) {
-                //Add converted url to new message
-                newMessage += converted + " ";
+        if ( _client != null && message.Author.Id == _client.CurrentUser.Id ) return;
+        if ( message is SocketUserMessage userMessage ) {
+            var urls = ExtractURL( userMessage.Content );
+            if ( urls.Length == 0 ) return;
+            var newMessage = "";
+            foreach ( var url in urls ) {
+                if ( string.IsNullOrEmpty( url ) ) continue;
+                if ( TryConvertURL( url, out var converted ) ) {
+                    newMessage += converted + " ";
+                }
             }
+            if ( string.IsNullOrEmpty( newMessage ) ) return;
+            await userMessage.ReplyAsync( newMessage );
         }
-        if ( string.IsNullOrEmpty( newMessage ) ) return;
-        Console.WriteLine($"[MessageReceived]: New message: {newMessage}");
-        await userMessage.ReplyAsync( newMessage );
     }
     
     string[] ExtractURL( string message ) {
-        Console.WriteLine($"[ExtractURL]: Attempting to extract URL from message: {message}");
-        string [] extracted = _urlRegex.Matches(message)
+        var extracted = _urlRegex.Matches(message)
             .Cast<Match>()
             .Select(m => m.Value) 
             .ToArray();
-        if ( extracted.Length > 0 ) {
-            Console.WriteLine($"[ExtractURL]: Extracted URL: {extracted[0]}");
-            return extracted;
-        }
-        Console.WriteLine("[ExtractURL]: No URL extracted.");
-        return Array.Empty<string>();
+        return extracted.Length > 0 ? extracted : Array.Empty<string>();
     }
 
     bool TryConvertURL( string url, out string converted ) {
-        //Check if url is x.com or twitter.com and if so, convert to fxtwitter.com
-        for ( var i = 0; i < TARGET_URLS.Length; i++ ) {
-            if ( url.Contains(TARGET_URLS[i]) ) {
-                converted = url.Replace( TARGET_URLS[i], "fxtwitter.com" );
-                Console.WriteLine($"[TryConvertURL]: Converted URL: {converted}");
-                return true;
-            }
+        foreach ( var turl in _targetUrls ) {
+            if ( !url.Contains( turl ) ) continue;
+            converted = url.Replace( turl, "fxtwitter.com" );
+            Console.WriteLine($"[TryConvertURL]: Converted URL: {converted}");
+            return true;
         }
         converted = "";
-        Console.WriteLine("[TryConvertURL]: No URL converted.");
         return false;
     }
     
@@ -101,4 +80,7 @@ public class Program {
         Console.WriteLine( msg.ToString() );
         return Task.CompletedTask;
     }
+
+    [GeneratedRegex(@"https?://[^\s]*(twitter|x)[^\s]+/status/[^\s]+")]
+    private static partial Regex MyRegex();
 }
