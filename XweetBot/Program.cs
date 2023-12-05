@@ -13,7 +13,7 @@ public partial class Program {
 
     const string URL_REGEX_STRING = @"https?://[^\s]*(twitter|x)[^\s]+/status/[^\s]+";
 
-    readonly Regex _urlRegex = MyRegex();
+    readonly Regex _urlRegex = new(@"https?://[^\s]*(twitter|x)[^\s]+/status/[^\s]+");
     readonly string[] _targetUrls = new string[]{ "x.com", "twitter.com" };
 
     public async Task MainAsync() {
@@ -80,7 +80,5 @@ public partial class Program {
         Console.WriteLine( msg.ToString() );
         return Task.CompletedTask;
     }
-
-    [GeneratedRegex(@"https?://[^\s]*(twitter|x)[^\s]+/status/[^\s]+")]
-    private static partial Regex MyRegex();
+    
 }
