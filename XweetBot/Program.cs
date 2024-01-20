@@ -57,7 +57,7 @@ public partial class Program {
             // (you can't hide embeds from other users' DMs)
             if ( userMessage.Channel.GetChannelType() != ChannelType.DM ) {
                 await userMessage.ModifyAsync( props => {
-                    props.Flags = new Optional<MessageFlags?>(MessageFlags.SuppressEmbeds);
+                    props.Flags = new Optional<MessageFlags?>( MessageFlags.SuppressEmbeds );
                 } );
             }
         }
