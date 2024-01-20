@@ -52,6 +52,14 @@ public partial class Program {
 
             if ( string.IsNullOrEmpty( convertedMessage ) ) return;
             await userMessage.ReplyAsync( convertedMessage );
+
+            // Hide the original message's embed if it's not a DM channel.
+            // (you can't hide embeds from other users' DMs)
+            if ( userMessage.Channel.GetChannelType() != ChannelType.DM ) {
+                await userMessage.ModifyAsync( props => {
+                    props.Flags = new Optional<MessageFlags?>( MessageFlags.SuppressEmbeds );
+                } );
+            }
         }
     }
 
