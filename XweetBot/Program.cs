@@ -4,6 +4,13 @@ using Discord.WebSocket;
 
 namespace XweetBot;
 
+public record ReplaceRule( string NewDomain, Regex MatchRegex, Regex ReplaceRegex ) {
+    public IEnumerable<string> ExtractUrls( string messageContent ) {
+        var matches = MatchRegex.Matches( messageContent );
+        return matches.Select( match => ReplaceRegex.Replace( match.Value, NewDomain ) );
+    }
+}
+
 public partial class Program {
     public static Task Main( string[] args ) {
         return new Program().MainAsync();
@@ -11,8 +18,21 @@ public partial class Program {
 
     DiscordSocketClient? _client;
 
-    readonly Regex _urlRegex = new(@"https?://(?!fxtwitter)[^\s]*(twitter|x)[^\s]+/status/[^\s]+");
-    readonly string[] _targetUrls = { "x.com", "twitter.com" };
+    readonly ReplaceRule[] _rules = new[] {
+        // Twitter replace rules
+        new ReplaceRule(
+            NewDomain: "fxtwitter.com/",
+            MatchRegex: new(@"https?:\/\/(x|twitter)\.com\/(\w){1,15}\/status\/[^\s]+"),
+            ReplaceRegex: new(@"(x|twitter)\.com\/")
+        ),
+
+        // Reddit replace rules
+        new ReplaceRule(
+            NewDomain: "rxddit.com/",
+            MatchRegex: new(@"https?:\/\/(redd.it|(\w+\.)?reddit.com\/(r|u|user)\/\w+\/(s|comments))\/[^\s]+"),
+            ReplaceRegex: new(@"(((\w+\.)?reddit\.com)|(redd\.it))\/")
+        ),
+    };
 
     public async Task MainAsync() {
         var root = Directory.GetCurrentDirectory();
@@ -29,7 +49,7 @@ public partial class Program {
 
         await _client.LoginAsync( TokenType.Bot, Environment.GetEnvironmentVariable( "XWEETBOT_TOKEN" ) );
         await _client.StartAsync();
-        await _client.SetGameAsync( "For X/Twitter Links", null, ActivityType.Watching );
+        await _client.SetGameAsync( "For X/Twitter/Reddit Links", null, ActivityType.Watching );
 
         await LogAsync( new LogMessage( LogSeverity.Info, "MainAsync", "[XweetBot]: Main has started." ) );
 
@@ -40,46 +60,26 @@ public partial class Program {
     async Task MessageReceived( SocketMessage message ) {
         if ( _client != null && message.Author.Id == _client.CurrentUser.Id ) return;
         if ( message is SocketUserMessage userMessage ) {
-            var urls = ExtractUrl( userMessage.Content );
-            if ( urls.Length == 0 ) return;
-            var convertedMessage = "";
-            foreach ( var url in urls ) {
-                if ( string.IsNullOrEmpty( url ) ) continue;
-                if ( TryConvertUrl( url, out var converted ) ) {
-                    convertedMessage += converted + " ";
-                }
-            }
+            var convertedUrls = _rules.SelectMany( rule => rule.ExtractUrls( userMessage.Content ) );
+            if ( !convertedUrls.Any() ) return;
 
-            if ( string.IsNullOrEmpty( convertedMessage ) ) return;
-            await userMessage.ReplyAsync( convertedMessage );
+            // Send replies to the user, one for each converted URL.
+            foreach ( var url in convertedUrls ) {
+                await userMessage.ReplyAsync( url );
+                await LogAsync( new LogMessage( LogSeverity.Info, "MessageReceived", $"[XweetBot]: Converted URL: {url}" ) );
+            }
 
             // Hide the original message's embed if it's not a DM channel.
             // (you can't hide embeds from other users' DMs)
             if ( userMessage.Channel.GetChannelType() != ChannelType.DM ) {
+                // Sometimes immediately suppressing the embeds doesn't work.
+                // Maybe waiting 500ms first will help?
+                await Task.Delay( 500 );
                 await userMessage.ModifyAsync( props => {
                     props.Flags = new Optional<MessageFlags?>( MessageFlags.SuppressEmbeds );
                 } );
             }
         }
-    }
-
-    string[] ExtractUrl( string message ) {
-        var extracted = _urlRegex.Matches( message )
-            .Select( m => m.Value )
-            .ToArray();
-        return extracted.Length > 0 ? extracted : Array.Empty<string>();
-    }
-
-    bool TryConvertUrl( string url, out string converted ) {
-        foreach ( var turl in _targetUrls ) {
-            if ( !url.Contains( turl ) ) continue;
-            converted = url.Replace( turl, "fxtwitter.com" );
-            LogAsync( new LogMessage( LogSeverity.Info, "TryConvertUrl", "[XweetBot]: Converted Url." ) );
-            return true;
-        }
-
-        converted = "";
-        return false;
     }
 
     static Task LogAsync( LogMessage msg ) {
