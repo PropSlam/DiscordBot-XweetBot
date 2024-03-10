@@ -65,7 +65,7 @@ public partial class Program {
 
             // Send replies to the user, one for each converted URL.
             foreach ( var url in convertedUrls ) {
-                await userMessage.ReplyAsync( url );
+                await userMessage.ReplyAsync( url, flags: MessageFlags.SuppressNotification );
                 await LogAsync( new LogMessage( LogSeverity.Info, "MessageReceived", $"[XweetBot]: Converted URL: {url}" ) );
             }
 
