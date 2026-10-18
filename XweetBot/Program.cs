@@ -33,7 +33,7 @@ public partial class Program {
 
         await _client.LoginAsync( TokenType.Bot, Environment.GetEnvironmentVariable( "XWEETBOT_TOKEN" ) );
         await _client.StartAsync();
-        await _client.SetGameAsync( "For X/Twitter/Reddit Links", null, ActivityType.Watching );
+        await _client.SetGameAsync( "For X/Twitter/R̶e̶d̶d̶i̶t̶ Links", null, ActivityType.Watching );
 
         await LogAsync( new LogMessage( LogSeverity.Info, "MainAsync", "[XweetBot]: Main has started." ) );
 

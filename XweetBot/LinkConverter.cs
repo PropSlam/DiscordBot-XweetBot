@@ -9,11 +9,11 @@ public class LinkConverter {
             ReplaceRegex: new(@"(x|twitter)\.com\/")
         ),
 
-        // Reddit replace rules
-        new ReplaceRule(
+        // Reddit replace rules -- NOTE: Not needed anymore but left in just in-case. No I don't care about your complaints on leaving dead code.
+        /*new ReplaceRule(
             NewDomain: "rxddit.com/",
             MatchRegex: new(@"https?:\/\/(redd.it|(\w+\.)?reddit.com\/(r|u|user)\/\w+\/(s|comments))\/[^\s]+"),
             ReplaceRegex: new(@"(((\w+\.)?reddit\.com)|(redd\.it))\/")
-        ),
+        ),*/
     };
 }
