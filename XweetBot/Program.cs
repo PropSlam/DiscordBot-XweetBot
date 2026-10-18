@@ -17,23 +17,7 @@ public partial class Program {
     }
 
     DiscordSocketClient? _client;
-
-    readonly ReplaceRule[] _rules = new[] {
-        // Twitter replace rules
-        new ReplaceRule(
-            NewDomain: "fxtwitter.com/",
-            MatchRegex: new(@"https?:\/\/(x|twitter)\.com\/(\w){1,15}\/status\/[^\s]+"),
-            ReplaceRegex: new(@"(x|twitter)\.com\/")
-        ),
-
-        // Reddit replace rules
-        new ReplaceRule(
-            NewDomain: "rxddit.com/",
-            MatchRegex: new(@"https?:\/\/(redd.it|(\w+\.)?reddit.com\/(r|u|user)\/\w+\/(s|comments))\/[^\s]+"),
-            ReplaceRegex: new(@"(((\w+\.)?reddit\.com)|(redd\.it))\/")
-        ),
-    };
-
+    
     public async Task MainAsync() {
         var root = Directory.GetCurrentDirectory();
         var dotenv = Path.Combine( root, ".env" );
@@ -60,7 +44,7 @@ public partial class Program {
     async Task MessageReceived( SocketMessage message ) {
         if ( _client != null && message.Author.Id == _client.CurrentUser.Id ) return;
         if ( message is SocketUserMessage userMessage ) {
-            var convertedUrls = _rules.SelectMany( rule => rule.ExtractUrls( userMessage.Content ) );
+            var convertedUrls = LinkConverter.Rules.SelectMany( rule => rule.ExtractUrls( userMessage.Content ) ).ToList();
             if ( !convertedUrls.Any() ) return;
 
             // Send replies to the user, one for each converted URL.
